@@ -6,6 +6,7 @@
 *.lo
 *.o
 *.obj
+*.os
 
 # Precompiled Headers
 *.gch
@@ -37,5 +38,18 @@
 *.out
 *.app
 
-# debug information files
+# Debug information files
 *.dwo
+
+# SCons
+.sconsign.dblite
+.scons-*
+
+# Build output (extension binaries)
+bin/
+addons/godot_av/bin/
+
+# Generated sources (godot-cpp bindings, doc data)
+src/gen/
+godot-cpp/gen/
+godot-cpp/bin/
