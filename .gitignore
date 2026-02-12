@@ -1,55 +1,78 @@
-# Prerequisites
+# -----------------------------
+# C/C++ Build Artifacts
+# -----------------------------
 *.d
-
-# Compiled Object files
 *.slo
 *.lo
 *.o
 *.obj
 *.os
-
-# Precompiled Headers
 *.gch
 *.pch
-
-# Linker files
 *.ilk
-
-# Debugger Files
 *.pdb
-
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-
-# Fortran module files
+*.dwo
 *.mod
 *.smod
-
-# Compiled Static libraries
 *.lai
 *.la
 *.a
 *.lib
-
-# Executables
+*.so
+*.dylib
+*.dll
 *.exe
 *.out
 *.app
 
-# Debug information files
-*.dwo
-
+# -----------------------------
 # SCons
+# -----------------------------
 .sconsign.dblite
 .scons-*
 
-# Build output (extension binaries)
-bin/
+# -----------------------------
+# Build Output
+# -----------------------------
+/build/
+/out/
+/dist/
+/release/
+/artifacts/
+
+# Extension binaries
 addons/godot_av/bin/
 
-# Generated sources (godot-cpp bindings, doc data)
+# -----------------------------
+# godot-cpp Generated
+# -----------------------------
 src/gen/
 godot-cpp/gen/
 godot-cpp/bin/
+
+# -----------------------------
+# Godot Editor
+# -----------------------------
+.godot/
+.import/
+.export/
+
+# -----------------------------
+# Python
+# -----------------------------
+__pycache__/
+*.pyc
+.venv/
+env/
+.python-version
+
+# -----------------------------
+# ccache
+# -----------------------------
+.ccache/
+
+# -----------------------------
+# macOS / Windows junk
+# -----------------------------
+.DS_Store
+Thumbs.db
