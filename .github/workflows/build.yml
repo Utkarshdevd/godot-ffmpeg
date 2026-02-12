@@ -111,8 +111,11 @@ jobs:
           }
         shell: pwsh
 
-      - name: Build godot-cpp (generate)
-        run: scons -C godot-cpp generate
+      - name: Build godot-cpp (template_debug)
+        run: scons -C godot-cpp target=template_debug -j4
+
+      - name: Build godot-cpp (template_release)
+        run: scons -C godot-cpp target=template_release -j4
 
       - name: Build (template_debug)
         run: scons -j4 target=template_debug
