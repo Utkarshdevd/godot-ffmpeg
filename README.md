@@ -1,2 +1,99 @@
 # godot-ffmpeg
-A GDExtension for playing videos in Godot
+
+A minimal **Godot 4.x GDExtension** in C++20 that links against FFmpeg and prints the FFmpeg version when the extension loads. It serves as a load-test to verify headers, linking, and Godot integration—no decoding logic.
+
+- **godot-cpp** bindings, **SCons** build
+- **macOS** (Apple Silicon and Intel) supported; FFmpeg from Homebrew
+- Registers a Node-derived **AVTestNode**; in `_ready()` it calls `av_version_info()` and logs via Godot’s `UtilityFunctions::print()`
+
+---
+
+## Prerequisites
+
+- **Godot 4.2+**
+- **Python 3.8+** and **SCons 4.x**
+- **FFmpeg** (headers and libs): install via Homebrew on macOS, or set `FFMPEG_PREFIX` to your FFmpeg prefix
+- **godot-cpp** as a submodule (see build steps below)
+
+---
+
+## Build strategy and order
+
+1. **Get godot-cpp** (submodule) and build it first:
+   ```bash
+   git submodule update --init --recursive
+   cd godot-cpp
+   scons target=template_debug    # and optionally target=template_release
+   # On Intel Mac, use arch=x86_64 to match your FFmpeg:
+   scons target=template_debug arch=x86_64
+   cd ..
+   ```
+
+2. **Build the extension** from the repo root:
+   ```bash
+   # Intel Mac (x86_64)
+   scons target=template_debug arch=x86_64
+   scons target=template_release arch=x86_64
+
+   # Apple Silicon (arm64) or universal
+   scons target=template_debug
+   scons target=template_release
+   ```
+
+3. **Output:** Compiled `.dylib` (or platform equivalent) is installed under **`addons/godot_av/bin/`** (e.g. `addons/godot_av/bin/macos/` for x86_64, `addons/godot_av/bin/macos.arm64/` for arm64).
+
+**Optional:** Use **ccache** for faster rebuilds:
+```bash
+scons target=template_debug arch=x86_64 use_ccache=yes
+```
+
+---
+
+## Using the extension in a Godot project
+
+1. Copy the **`addons/godot_av`** folder into your project (so you have `YourProject/addons/godot_av/` with `godot_av.gdextension` and `bin/` containing the built library for your OS/arch).
+2. Open the project in Godot 4.x. Ensure the project root is the folder that contains `addons/`.
+3. Add an **AVTestNode** to a scene (Add Child Node → search for **AVTestNode**).
+4. Run the scene. In the Output panel you should see: `[godot_av] FFmpeg version: <version>`.
+
+You only need the **debug** library for editor/Play; use the **release** library when exporting a release build.
+
+---
+
+## Errors faced and fixed
+
+| Issue | Cause | Fix |
+|-------|--------|-----|
+| **`Class must declare 'static void _bind_methods'`** | godot-cpp requires every registered class to define its own `_bind_methods()`. | Added `static void _bind_methods();` in `AVTestNode` (header) and an empty `void AVTestNode::_bind_methods() {}` in the .cpp. |
+| **`'godot_cpp/classes/node.hpp' file not found`** | IDE/compiler couldn’t find generated godot-cpp bindings. `node.hpp` is generated under `godot-cpp/gen/include/`. | SConstruct appends `godot-cpp/include` and `godot-cpp/gen/include` to `CPPPATH`. For the IDE, `.vscode/c_cpp_properties.json` was added with those include paths. |
+| **`ld: ignoring file ... libavutil.dylib: found architecture 'x86_64', required architecture 'arm64'`** | On Apple Silicon, `brew --prefix ffmpeg` pointed at Intel Homebrew (`/usr/local`), so linker got x86_64 libs while building for arm64. | Prefer `/opt/homebrew/opt/ffmpeg` on macOS when it exists; reject `/usr/local` only when building for `arm64` or `universal`. |
+| **Intel Mac: same linker error** | Build defaulted to arm64/universal; Intel FFmpeg is x86_64-only. | Build with **`arch=x86_64`** on Intel Mac so the linker uses `/usr/local/opt/ffmpeg` (x86_64). SConstruct only rejects `/usr/local` when `env["arch"]` is `arm64` or `universal`. |
+| **`ERROR: FFmpeg at /usr/local/opt/ffmpeg is from Intel ... This build targets arm64`** when running `arch=x86_64` | Rejection of `/usr/local` ran before SConscript, so `env["arch"]` wasn’t set yet and the check was wrong. | Moved the “reject Intel Homebrew” check to **after** `SConscript("godot-cpp/SConstruct")` so we only reject when `env["arch"]` is `arm64` or `universal`. |
+| **`GDExtension dynamic library not found`** / **`res://addons/godot_av/...`** | Project used an **`addons/`** folder but the .gdextension and SConstruct used **`addon/`**. | Switched everything to **`addons/godot_av`**: paths in `godot_av.gdextension`, `projectdir` in SConstruct, and moved the addon from `addon/godot_av` to `addons/godot_av`. |
+| **Extension not loading in another project** | Addon was copied but the built `.dylib` was missing under `addons/godot_av/bin/...`, or project was opened from the wrong root. | Copy the entire **`addons/godot_av`** folder (including `bin/<platform>/<lib>`). Open the project from the directory that contains `addons/`. |
+
+---
+
+## Project layout
+
+```
+godot-ffmpeg/
+├── .github/              # (optional) CI
+├── addons/godot_av/      # GDExtension addon
+│   ├── godot_av.gdextension
+│   └── bin/              # Built libs (gitignored)
+├── godot-cpp/            # Submodule
+├── src/
+│   ├── register_types.{h,cpp}
+│   ├── av_test_node.{h,cpp}
+│   └── gen/              # Generated (gitignored)
+├── SConstruct
+├── custom.py
+└── README.md
+```
+
+---
+
+## License
+
+See [LICENSE](LICENSE).
