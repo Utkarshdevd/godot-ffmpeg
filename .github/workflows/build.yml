@@ -56,7 +56,14 @@ jobs:
 
       - name: Install FFmpeg (Windows)
         if: matrix.ffmpeg_install == 'choco'
-        run: choco install ffmpeg -y
+        run: |
+          $url = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl-shared.zip"
+          $zip = "$env:RUNNER_TEMP\ffmpeg-win64-shared.zip"
+          $out = "$env:RUNNER_TEMP\ffmpeg"
+          Invoke-WebRequest -Uri $url -OutFile $zip -UseBasicParsing
+          Expand-Archive -Path $zip -DestinationPath $out -Force
+          $dir = Get-ChildItem $out -Directory | Select-Object -First 1
+          echo "FFMPEG_PREFIX=$($dir.FullName)" >> $env:GITHUB_ENV
         shell: pwsh
 
       # --- CCache (macOS and Linux only) ---
