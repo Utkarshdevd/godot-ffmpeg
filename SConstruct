@@ -11,8 +11,14 @@ if os.environ.get("FFMPEG_PREFIX"):
     brew_prefix = os.environ.get("FFMPEG_PREFIX").strip()
 elif sys.platform == "darwin" and os.path.isdir("/opt/homebrew/opt/ffmpeg"):
     brew_prefix = "/opt/homebrew/opt/ffmpeg"
-else:
+elif sys.platform == "darwin":
     brew_prefix = os.popen("brew --prefix ffmpeg").read().strip()
+elif sys.platform == "win32":
+    # Windows: expect FFMPEG_PREFIX to be set via environment (CI sets this)
+    brew_prefix = os.environ.get("FFMPEG_PREFIX", "C:\\ProgramData\\chocolatey\\lib\\ffmpeg\\tools")
+else:
+    # Linux: default to /usr
+    brew_prefix = os.environ.get("FFMPEG_PREFIX", "/usr")
 
 ffmpeg_include = os.path.join(brew_prefix, "include")
 ffmpeg_lib = os.path.join(brew_prefix, "lib")
@@ -66,15 +72,19 @@ godot_cpp_gen_include = os.path.join(project_root, "godot-cpp", "gen", "include"
 env.Append(CPPPATH=[godot_cpp_include, godot_cpp_gen_include])
 
 # C++20
-env.Append(CXXFLAGS=["-std=c++20"])
+if env.get("is_msvc", False):
+    env.Append(CXXFLAGS=["/std:c++20"])
+else:
+    env.Append(CXXFLAGS=["-std=c++20"])
 
 # FFmpeg paths and libs
 env.Append(CPPPATH=[ffmpeg_include])
 env.Append(LIBPATH=[ffmpeg_lib])
 env.Append(LIBS=["avformat", "avcodec", "avutil", "swscale", "swresample"])
 
-# Runtime rpath so Godot finds FFmpeg dylibs
-env.Append(LINKFLAGS=["-Wl,-rpath," + ffmpeg_lib])
+# Runtime rpath so Godot finds FFmpeg dylibs (macOS/Linux only)
+if sys.platform != "win32":
+    env.Append(LINKFLAGS=["-Wl,-rpath," + ffmpeg_lib])
 
 env.Append(CPPPATH=["src/"])
 sources = Glob("src/*.cpp")

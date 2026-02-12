@@ -95,6 +95,15 @@ jobs:
           arch: x64
 
       # --- Build env and godot-cpp ---
+      - name: Set FFMPEG_PREFIX (macOS)
+        if: matrix.ffmpeg_install == 'brew'
+        run: |
+          if [ -d "/opt/homebrew/opt/ffmpeg" ]; then
+            echo "FFMPEG_PREFIX=/opt/homebrew/opt/ffmpeg" >> $GITHUB_ENV
+          else
+            echo "FFMPEG_PREFIX=$(brew --prefix ffmpeg)" >> $GITHUB_ENV
+          fi
+
       - name: Set FFMPEG_PREFIX (Linux)
         if: matrix.ffmpeg_install == 'apt'
         run: echo "FFMPEG_PREFIX=/usr" >> $GITHUB_ENV
@@ -102,26 +111,56 @@ jobs:
       - name: Set FFMPEG_PREFIX (Windows)
         if: matrix.ffmpeg_install == 'choco'
         run: |
-          $prefix = "C:\ProgramData\chocolatey\lib\ffmpeg\tools"
-          if (Test-Path "$prefix\ffmpeg-*-win64-shared") {
-            $dir = Get-ChildItem "$prefix\ffmpeg-*-win64-shared" | Select-Object -First 1
-            echo "FFMPEG_PREFIX=$($dir.FullName)" >> $env:GITHUB_ENV
+          # Chocolatey ffmpeg package location
+          $chocoLib = "C:\ProgramData\chocolatey\lib\ffmpeg"
+          $toolsPath = "$chocoLib\tools"
+          
+          # Try to find ffmpeg installation directory
+          if (Test-Path "$toolsPath\ffmpeg-*-win64-shared") {
+            $dir = Get-ChildItem "$toolsPath\ffmpeg-*-win64-shared" | Select-Object -First 1
+            $prefix = $dir.FullName
+          } elseif (Test-Path "$toolsPath") {
+            $prefix = $toolsPath
           } else {
-            echo "FFMPEG_PREFIX=$prefix" >> $env:GITHUB_ENV
+            # Fallback: use choco lib root
+            $prefix = $chocoLib
           }
+          
+          echo "FFMPEG_PREFIX=$prefix" >> $env:GITHUB_ENV
+          echo "Note: Chocolatey ffmpeg package may not include dev headers. Windows build may fail."
         shell: pwsh
 
       - name: Build godot-cpp (template_debug)
+        run: scons -C godot-cpp target=template_debug -j4 arch=arm64
+        if: matrix.ffmpeg_install == 'brew'
+
+      - name: Build godot-cpp (template_debug)
         run: scons -C godot-cpp target=template_debug -j4
+        if: matrix.ffmpeg_install != 'brew'
+
+      - name: Build godot-cpp (template_release)
+        run: scons -C godot-cpp target=template_release -j4 arch=arm64
+        if: matrix.ffmpeg_install == 'brew'
 
       - name: Build godot-cpp (template_release)
         run: scons -C godot-cpp target=template_release -j4
+        if: matrix.ffmpeg_install != 'brew'
+
+      - name: Build (template_debug)
+        run: scons -j4 target=template_debug arch=arm64
+        if: matrix.ffmpeg_install == 'brew'
 
       - name: Build (template_debug)
         run: scons -j4 target=template_debug
+        if: matrix.ffmpeg_install != 'brew'
+
+      - name: Build (template_release)
+        run: scons -j4 target=template_release arch=arm64
+        if: matrix.ffmpeg_install == 'brew'
 
       - name: Build (template_release)
         run: scons -j4 target=template_release
+        if: matrix.ffmpeg_install != 'brew'
 
       - name: ccache stats (after build)
         if: matrix.use_ccache
