@@ -21,7 +21,7 @@
 
 ## 1. Architectural Principles
 
-### 1️⃣ Layer Separation (Strict)
+### 1. Layer Separation (Strict)
 
 The project adheres to a strict boundary between the core logic and the engine wrapper.
 
@@ -30,7 +30,7 @@ The project adheres to a strict boundary between the core logic and the engine w
 | **Core Layer** | `src/core/`, `src/media/` | Pure C++; **NO** Godot headers/types; **NO** Godot object manipulation | FrameQueue; Clock; Decoder Wrapper; Demux Logic; Sync Logic |
 | **Godot Layer** | `src/godot/` | Thin wrapper around Core; **NO** decoding logic | Texture Upload; Godot Node Integration; Signal Emission |
 
-### 2️⃣ Threading Model
+### 2. Threading Model
 
 Decoding must strictly occur on a background thread to prevent blocking the engine.
 
@@ -44,13 +44,13 @@ Decoding must strictly occur on a background thread to prevent blocking the engi
 * **Shutdown:** Clean thread shutdown via `std::jthread` and stop tokens.
 * **Prohibited:** No busy-wait loops; no blocking the main thread.
 
-### 3️⃣ Namespace Discipline
+### 3. Namespace Discipline
 
 * All code must reside in: `namespace godot_ffmpeg`
 * **NO** global symbols.
 * **NEVER** add code inside `namespace godot`.
 
-### 4️⃣ Logging Discipline
+### 4. Logging Discipline
 
 All logging must use the centralized logger at `src/core/log.hpp`.
 
@@ -58,7 +58,7 @@ All logging must use the centralized logger at `src/core/log.hpp`.
 * **Required Macros:** `LOG_DEBUG`, `LOG_INFO`, `LOG_WARN`, `LOG_ERROR`
 * **Stripping:** Debug logs must be compile-time stripped in release builds via `GODOT_FFMPEG_DEBUG`.
 
-### 5️⃣ Performance Principles
+### 5. Performance Principles
 
 Targeting high-resolution content (4K+).
 
@@ -115,7 +115,7 @@ The decoder must remain **codec-agnostic**. Codec selection relies on FFmpeg str
 * Prefer assertions in debug builds.
 * **Do not** interact with Godot objects from the background thread.
 
-### 🚫 Forbidden Practices
+### Forbidden Practices
 
 1. No Godot includes in the core decoder layer.
 2. No global mutable state.
@@ -137,7 +137,7 @@ The decoder must remain **codec-agnostic**. Codec selection relies on FFmpeg str
 
 ---
 
-## 🤖 AI Agent Expectations
+## AI Agent Expectations
 
 When generating code for `godot-ffmpeg`, you must:
 
