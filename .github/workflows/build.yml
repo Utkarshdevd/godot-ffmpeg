@@ -115,27 +115,7 @@ jobs:
         if: matrix.ffmpeg_install == 'apt'
         run: echo "FFMPEG_PREFIX=/usr" >> $GITHUB_ENV
 
-      - name: Set FFMPEG_PREFIX (Windows)
-        if: matrix.ffmpeg_install == 'choco'
-        run: |
-          # Chocolatey ffmpeg package location
-          $chocoLib = "C:\ProgramData\chocolatey\lib\ffmpeg"
-          $toolsPath = "$chocoLib\tools"
-          
-          # Try to find ffmpeg installation directory
-          if (Test-Path "$toolsPath\ffmpeg-*-win64-shared") {
-            $dir = Get-ChildItem "$toolsPath\ffmpeg-*-win64-shared" | Select-Object -First 1
-            $prefix = $dir.FullName
-          } elseif (Test-Path "$toolsPath") {
-            $prefix = $toolsPath
-          } else {
-            # Fallback: use choco lib root
-            $prefix = $chocoLib
-          }
-          
-          echo "FFMPEG_PREFIX=$prefix" >> $env:GITHUB_ENV
-          echo "Note: Chocolatey ffmpeg package may not include dev headers. Windows build may fail."
-        shell: pwsh
+      # Windows FFMPEG_PREFIX is set in "Install FFmpeg (Windows)" (BtbN build with include/lib)
 
       - name: Build godot-cpp (template_debug)
         run: scons -C godot-cpp target=template_debug -j4 arch=arm64

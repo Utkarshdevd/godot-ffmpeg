@@ -72,7 +72,9 @@ godot_cpp_gen_include = os.path.join(project_root, "godot-cpp", "gen", "include"
 env.Append(CPPPATH=[godot_cpp_include, godot_cpp_gen_include])
 
 # C++20 (MSVC uses /std:c++20, GCC/Clang use -std=c++20)
-if env.get("is_msvc", False) or sys.platform == "win32":
+# Use sys.platform so we always pass the right flag on Windows (is_msvc may not be set when building extension)
+_on_windows = sys.platform in ("win32", "msys", "cygwin")
+if _on_windows:
     env.Append(CXXFLAGS=["/std:c++20"])
 else:
     env.Append(CXXFLAGS=["-std=c++20"])
