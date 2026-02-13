@@ -1,0 +1,167 @@
+# CI: build godot-ffmpeg GDExtension on macOS, Linux, and Windows.
+# No release automation; validates compilation only.
+
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            ffmpeg_install: brew
+            use_ccache: true
+          - os: ubuntu-latest
+            ffmpeg_install: apt
+            use_ccache: true
+          - os: windows-latest
+            ffmpeg_install: choco
+            use_ccache: false
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install SCons
+        run: pip install scons
+
+      # --- FFmpeg (and ccache where used) ---
+      - name: Install FFmpeg (macOS)
+        if: matrix.ffmpeg_install == 'brew'
+        run: |
+          brew install ffmpeg ccache
+
+      - name: Install FFmpeg (Linux)
+        if: matrix.ffmpeg_install == 'apt'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libswresample-dev ccache
+
+      - name: Install FFmpeg (Windows)
+        if: matrix.ffmpeg_install == 'choco'
+        run: |
+          $url = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl-shared.zip"
+          $zip = "$env:RUNNER_TEMP\ffmpeg-win64-shared.zip"
+          $out = "$env:RUNNER_TEMP\ffmpeg"
+          Invoke-WebRequest -Uri $url -OutFile $zip -UseBasicParsing
+          Expand-Archive -Path $zip -DestinationPath $out -Force
+          $dir = Get-ChildItem $out -Directory | Select-Object -First 1
+          echo "FFMPEG_PREFIX=$($dir.FullName)" >> $env:GITHUB_ENV
+        shell: pwsh
+
+      # --- CCache (macOS and Linux only) ---
+      - name: Restore ccache
+        if: matrix.use_ccache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.ccache
+          key: ${{ runner.os }}-ccache-${{ hashFiles('SConstruct', 'custom.py', 'src/**', 'godot-cpp/**') }}
+
+      - name: Configure ccache
+        if: matrix.use_ccache
+        run: ccache -M 2G
+
+      - name: Set CC/CXX for ccache (macOS)
+        if: matrix.use_ccache && runner.os == 'macOS'
+        run: |
+          echo "CC=ccache clang" >> $GITHUB_ENV
+          echo "CXX=ccache clang++" >> $GITHUB_ENV
+
+      - name: Set CC/CXX for ccache (Linux)
+        if: matrix.use_ccache && runner.os == 'Linux'
+        run: |
+          echo "CC=ccache gcc" >> $GITHUB_ENV
+          echo "CXX=ccache g++" >> $GITHUB_ENV
+
+      - name: ccache stats (before build)
+        if: matrix.use_ccache
+        run: ccache -s
+
+      # --- MSVC (Windows only) ---
+      - name: Setup MSVC (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      # --- Build env and godot-cpp ---
+      - name: Set FFMPEG_PREFIX (macOS)
+        if: matrix.ffmpeg_install == 'brew'
+        run: |
+          if [ -d "/opt/homebrew/opt/ffmpeg" ]; then
+            echo "FFMPEG_PREFIX=/opt/homebrew/opt/ffmpeg" >> $GITHUB_ENV
+          else
+            echo "FFMPEG_PREFIX=$(brew --prefix ffmpeg)" >> $GITHUB_ENV
+          fi
+
+      - name: Set FFMPEG_PREFIX (Linux)
+        if: matrix.ffmpeg_install == 'apt'
+        run: echo "FFMPEG_PREFIX=/usr" >> $GITHUB_ENV
+
+      # Windows FFMPEG_PREFIX is set in "Install FFmpeg (Windows)" (BtbN build with include/lib)
+
+      - name: Build godot-cpp (template_debug)
+        run: scons -C godot-cpp target=template_debug -j4 arch=arm64
+        if: matrix.ffmpeg_install == 'brew'
+
+      - name: Build godot-cpp (template_debug)
+        run: scons -C godot-cpp target=template_debug -j4
+        if: matrix.ffmpeg_install != 'brew'
+
+      - name: Build godot-cpp (template_release)
+        run: scons -C godot-cpp target=template_release -j4 arch=arm64
+        if: matrix.ffmpeg_install == 'brew'
+
+      - name: Build godot-cpp (template_release)
+        run: scons -C godot-cpp target=template_release -j4
+        if: matrix.ffmpeg_install != 'brew'
+
+      - name: Build (template_debug)
+        run: scons -j4 target=template_debug arch=arm64
+        if: matrix.ffmpeg_install == 'brew'
+
+      - name: Build (template_debug)
+        run: scons -j4 target=template_debug
+        if: matrix.ffmpeg_install != 'brew'
+
+      - name: Build (template_release)
+        run: scons -j4 target=template_release arch=arm64
+        if: matrix.ffmpeg_install == 'brew'
+
+      - name: Build (template_release)
+        run: scons -j4 target=template_release
+        if: matrix.ffmpeg_install != 'brew'
+
+      - name: ccache stats (after build)
+        if: matrix.use_ccache
+        run: ccache -s
+
+      - name: Save ccache
+        if: matrix.use_ccache
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.ccache
+          key: ${{ runner.os }}-ccache-${{ hashFiles('SConstruct', 'custom.py', 'src/**', 'godot-cpp/**') }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-ffmpeg-${{ runner.os }}
+          path: addons/godot_av/bin/
