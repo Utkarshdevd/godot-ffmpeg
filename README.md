@@ -20,6 +20,7 @@ A minimal **Godot 4.x GDExtension** in C++20 that links against FFmpeg and print
 ## Build strategy and order
 
 1. **Get godot-cpp** (submodule) and build it first:
+
    ```bash
    git submodule update --init --recursive
    cd godot-cpp
@@ -30,6 +31,7 @@ A minimal **Godot 4.x GDExtension** in C++20 that links against FFmpeg and print
    ```
 
 2. **Build the extension** from the repo root:
+
    ```bash
    # Intel Mac (x86_64)
    scons target=template_debug arch=x86_64
@@ -43,6 +45,7 @@ A minimal **Godot 4.x GDExtension** in C++20 that links against FFmpeg and print
 3. **Output:** Compiled `.dylib` (or platform equivalent) is installed under **`addons/godot_av/bin/`** (e.g. `addons/godot_av/bin/macos/` for x86_64, `addons/godot_av/bin/macos.arm64/` for arm64).
 
 **Optional:** Use **ccache** for faster rebuilds:
+
 ```bash
 scons target=template_debug arch=x86_64 use_ccache=yes
 ```
@@ -63,7 +66,7 @@ You only need the **debug** library for editor/Play; use the **release** library
 ## Errors faced and fixed
 
 | Issue | Cause | Fix |
-|-------|--------|-----|
+| ----- | ----- | --- |
 | **`Class must declare 'static void _bind_methods'`** | godot-cpp requires every registered class to define its own `_bind_methods()`. | Added `static void _bind_methods();` in `AVTestNode` (header) and an empty `void AVTestNode::_bind_methods() {}` in the .cpp. |
 | **`'godot_cpp/classes/node.hpp' file not found`** | IDE/compiler couldn’t find generated godot-cpp bindings. `node.hpp` is generated under `godot-cpp/gen/include/`. | SConstruct appends `godot-cpp/include` and `godot-cpp/gen/include` to `CPPPATH`. For the IDE, `.vscode/c_cpp_properties.json` was added with those include paths. |
 | **`ld: ignoring file ... libavutil.dylib: found architecture 'x86_64', required architecture 'arm64'`** | On Apple Silicon, `brew --prefix ffmpeg` pointed at Intel Homebrew (`/usr/local`), so linker got x86_64 libs while building for arm64. | Prefer `/opt/homebrew/opt/ffmpeg` on macOS when it exists; reject `/usr/local` only when building for `arm64` or `universal`. |
@@ -76,7 +79,7 @@ You only need the **debug** library for editor/Play; use the **release** library
 
 ## Project layout
 
-```
+```text
 godot-ffmpeg/
 ├── .github/              # (optional) CI
 ├── addons/godot_av/      # GDExtension addon

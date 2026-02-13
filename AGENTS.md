@@ -9,6 +9,7 @@
 * **Goal:** A cross-platform, threaded, high-resolution screen recording viewer and media backend suitable for 4K+ UI playback.
 
 **Key Priorities:**
+
 * Correct Architecture
 * Thread Safety
 * Performance
@@ -26,8 +27,8 @@ The project adheres to a strict boundary between the core logic and the engine w
 
 | Layer | Path | Constraints | Responsibilities |
 | :--- | :--- | :--- | :--- |
-| **Core Layer** | `src/core/`, `src/media/` | • Pure C++<br>• **NO** Godot headers/types<br>• **NO** Godot object manipulation | • FrameQueue<br>• Clock<br>• Decoder Wrapper<br>• Demux Logic<br>• Sync Logic |
-| **Godot Layer** | `src/godot/` | • Thin wrapper around Core<br>• **NO** decoding logic | • Texture Upload<br>• Godot Node Integration<br>• Signal Emission |
+| **Core Layer** | `src/core/`, `src/media/` | Pure C++; **NO** Godot headers/types; **NO** Godot object manipulation | FrameQueue; Clock; Decoder Wrapper; Demux Logic; Sync Logic |
+| **Godot Layer** | `src/godot/` | Thin wrapper around Core; **NO** decoding logic | Texture Upload; Godot Node Integration; Signal Emission |
 
 ### 2️⃣ Threading Model
 
@@ -36,9 +37,8 @@ Decoding must strictly occur on a background thread to prevent blocking the engi
 **Expected Data Flow:**
 `Decode Thread` $\rightarrow$ `FrameQueue` $\rightarrow$ `Main Thread (Godot)`
 
-
-
 **Rules:**
+
 * **Main Thread:** Only Godot objects may be accessed here.
 * **FrameQueue:** Must be thread-safe.
 * **Shutdown:** Clean thread shutdown via `std::jthread` and stop tokens.
@@ -73,14 +73,17 @@ Targeting high-resolution content (4K+).
 ## 2. Testing Discipline
 
 ### Core Code Testability
+
 Everything in `src/core/` and `src/media/` must be unit-testable **independently** of Godot.
 
 ### Testing Rules
+
 * **Location:** Tests live in `tests/`.
 * **Requirement:** All new features affecting core logic must include unit tests.
 * **Gatekeeping:** All tests must pass before merging. No feature merges without green CI.
 
 ### CI Expectations
+
 CI validates cross-platform compilation (macOS, Linux, Windows), FFmpeg linking, unit tests, and both Debug/Release builds. **Never merge red CI.**
 
 ---
@@ -88,13 +91,16 @@ CI validates cross-platform compilation (macOS, Linux, Windows), FFmpeg linking,
 ## 3. Workflow & Strategy
 
 ### Branching Strategy
+
 * `main`: Always stable.
 * `feature/*`: Feature code + tests. Deleted after merge.
 * `fix/*`: Bug fixes.
 * **Note:** Do NOT create separate test-only branches.
 
 ### Codec Strategy
+
 The decoder must remain **codec-agnostic**. Codec selection relies on FFmpeg stream metadata.
+
 * **Minimum:** H.264, AV1
 * **Future:** HEVC, VP9
 
@@ -103,29 +109,31 @@ The decoder must remain **codec-agnostic**. Codec selection relies on FFmpeg str
 ## 4. Debugging & Constraints
 
 ### Debugging Guidelines
+
 * Always debug `template_debug` builds.
 * Use centralized logging.
 * Prefer assertions in debug builds.
 * **Do not** interact with Godot objects from the background thread.
 
 ### 🚫 Forbidden Practices
-1.  No Godot includes in the core decoder layer.
-2.  No global mutable state.
-3.  No raw pointers without ownership clarity.
-4.  No unbounded queues.
-5.  No ad-hoc logging systems.
+
+1. No Godot includes in the core decoder layer.
+2. No global mutable state.
+3. No raw pointers without ownership clarity.
+4. No unbounded queues.
+5. No ad-hoc logging systems.
 
 ---
 
 ## 5. Future Roadmap
 
-1.  Decode core & Thread-safe FrameQueue
-2.  Minimal texture upload
-3.  Audio + Sync
-4.  Seek support
-5.  GPU YUV conversion
-6.  Hardware decode
-7.  Android/iOS support
+1. Decode core & Thread-safe FrameQueue
+2. Minimal texture upload
+3. Audio + Sync
+4. Seek support
+5. GPU YUV conversion
+6. Hardware decode
+7. Android/iOS support
 
 ---
 
@@ -133,11 +141,11 @@ The decoder must remain **codec-agnostic**. Codec selection relies on FFmpeg str
 
 When generating code for `godot-ffmpeg`, you must:
 
-1.  **Respect Namespace:** Use `godot_ffmpeg`.
-2.  **Respect Layering:** strictly separate `src/core` (Pure C++) from `src/godot`.
-3.  **Use Centralized Logging:** Use `log.hpp` macros.
-4.  **Ensure Testability:** Write components that can be tested without Godot.
-5.  **Thread Safety:** Use strict ownership and thread-safe queues.
+1. **Respect Namespace:** Use `godot_ffmpeg`.
+2. **Respect Layering:** strictly separate `src/core` (Pure C++) from `src/godot`.
+3. **Use Centralized Logging:** Use `log.hpp` macros.
+4. **Ensure Testability:** Write components that can be tested without Godot.
+5. **Thread Safety:** Use strict ownership and thread-safe queues.
 
 **Decision Heuristic:**
 If uncertain, favor **Simplicity**, **Determinism**, **Testability**, and **Clean Layering**.
