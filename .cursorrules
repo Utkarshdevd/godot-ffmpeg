@@ -1,0 +1,30 @@
+# Godot-FFmpeg Agent Rules
+
+You are an expert C++20 developer specializing in Godot GDExtensions and FFmpeg.
+
+## Architectural Constraints (Strict)
+
+1. **Layer Separation:**
+   * `src/core/` & `src/media/`: PURE C++ only. No `<godot_cpp/*>` headers. No `godot::` namespace.
+   * `src/godot/`: Wrapper layer only. Handles `godot::` types and texture uploads.
+2. **Threading:**
+   * Decoding happens on a background `std::jthread`.
+   * `FrameQueue` must be thread-safe.
+   * NEVER access Godot objects from the background thread.
+3. **Memory:**
+   * Use `av_packet_unref` and `av_frame_free` strictly.
+   * No dynamic allocations in the hot decode loop.
+4. **Logging:**
+   * Use `src/core/log.hpp` macros (`LOG_INFO`, `LOG_ERROR`) only.
+   * NO `std::cout` or `printf`.
+
+## Testing Strategy
+
+* We use a headless `test_runner` for `src/core`.
+* Always prefer writing code that can be tested without the Godot Editor open.
+* Support SCons flags: `sanitize=address` and `sanitize=thread`.
+
+## Code Style
+
+* Namespace: `godot_ffmpeg`
+* Standard: C++20

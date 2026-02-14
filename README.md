@@ -63,6 +63,18 @@ You only need the **debug** library for editor/Play; use the **release** library
 
 ---
 
+## Testing & Quality Assurance
+
+- **Core Layer Isolation:** Strict unit tests run on the `src/core` logic independently of the Godot Editor using a headless **test_runner**. The core layer is built and tested without loading the engine.
+- **Sanitizers (Local Workflow):** For local debugging, use SCons sanitizer flags to catch memory and concurrency bugs:
+  - `scons target=template_debug` — standard debug build
+  - `scons target=template_debug sanitize=address` — detects memory leaks and buffer overflows (AddressSanitizer)
+  - `scons target=template_debug sanitize=thread` — detects race conditions and deadlocks (ThreadSanitizer)
+  - **Note:** Run sanitizer builds via the **test_runner** only. Do **not** run sanitizer-built libraries inside the Godot Editor (runtime issues and false positives).
+- **CI/CD Strategy:** On every push to `main` or Pull Request, CI runs the full build matrix (e.g. ASan, TSan, Linux, Windows, macOS) to validate compilation and tests across platforms and sanitizer configurations.
+
+---
+
 ## Errors faced and fixed
 
 | Issue | Cause | Fix |
