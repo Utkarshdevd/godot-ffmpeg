@@ -34,6 +34,14 @@ use_ccache = ARGUMENTS.get("use_ccache", os.environ.get("USE_CCACHE", "no")).low
 
 opts = Variables(customs, ARGUMENTS)
 opts.Add(BoolVariable("use_ccache", "Use ccache for compilation", use_ccache))
+opts.Add(
+    EnumVariable(
+        "sanitize",
+        "Enable compiler sanitizers (address, thread, undefined)",
+        "none",
+        allowed_values=("none", "address", "thread", "undefined"),
+    )
+)
 opts.Update(localEnv)
 
 Help(opts.GenerateHelpText(localEnv))
@@ -54,16 +62,17 @@ if sys.platform == "darwin" and brew_prefix.startswith("/usr/local") and env["ar
     print("")
     sys.exit(1)
 
-# ccache: wrap CC and CXX if enabled and ccache is available
-if use_ccache:
+# ccache: wrap CC and CXX if enabled (use_ccache=yes or CCACHE in env) so sanitizer flag changes trigger cache-miss
+_use_ccache = use_ccache or os.environ.get("CCACHE") is not None
+if _use_ccache:
     ccache = shutil.which("ccache")
     if ccache:
         for var in ("CC", "CXX"):
-            if env.get(var):
-                env[var] = ccache + " " + env[var]
+            if env.get(var) and "ccache" not in str(env.get(var, "")):
+                env[var] = "ccache " + env[var]
         print("Using ccache for compilation.")
     else:
-        print("use_ccache=yes but ccache not found in PATH; building without ccache.")
+        print("use_ccache=yes or CCACHE set but ccache not found in PATH; building without ccache.")
 
 # Ensure godot-cpp headers (including generated bindings in gen/include) are found
 project_root = env.Dir("#").abspath
@@ -87,6 +96,13 @@ env.Append(LIBS=["avformat", "avcodec", "avutil", "swscale", "swresample"])
 # Runtime rpath so Godot finds FFmpeg dylibs (macOS/Linux only)
 if sys.platform != "win32":
     env.Append(LINKFLAGS=["-Wl,-rpath," + ffmpeg_lib])
+
+# Sanitizers (GCC/Clang only; for test_runner and main library debugging)
+if not _on_windows and env.get("sanitize", "none") != "none":
+    san = env["sanitize"]
+    env.Append(CCFLAGS=["-fsanitize=%s" % san, "-g", "-fno-omit-frame-pointer"])
+    env.Append(LINKFLAGS=["-fsanitize=%s" % san])
+    print("WARNING: Building with Sanitizer: %s ..." % san)
 
 env.Append(CPPPATH=["src/"])
 sources = Glob("src/*.cpp")
