@@ -75,6 +75,23 @@ You only need the **debug** library for editor/Play; use the **release** library
 
 ---
 
+## Running Tests
+
+- **Generate Assets:** Test video assets are not committed to git. Generate them once (requires FFmpeg on PATH):
+
+  ```bash
+  python3 tests/generate_assets.py
+  ```
+
+- **Build & Run:** Build the headless test runner and run it:
+
+  ```bash
+  scons target=test
+  ./bin/test_runner
+  ```
+
+---
+
 ## Errors faced and fixed
 
 | Issue | Cause | Fix |

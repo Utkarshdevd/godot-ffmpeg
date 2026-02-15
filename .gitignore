@@ -72,6 +72,11 @@ env/
 .ccache/
 
 # -----------------------------
+# Test assets (generated; do not commit)
+# -----------------------------
+tests/assets/
+
+# -----------------------------
 # macOS / Windows junk
 # -----------------------------
 .DS_Store
