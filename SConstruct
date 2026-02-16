@@ -42,6 +42,7 @@ opts.Add(
         allowed_values=("none", "address", "thread", "undefined"),
     )
 )
+opts.Add(BoolVariable("run_tests", "Build and run tests after building", False))
 opts.Update(localEnv)
 
 Help(opts.GenerateHelpText(localEnv))
@@ -51,6 +52,12 @@ env = localEnv.Clone()
 if not (os.path.isdir("godot-cpp") and os.listdir("godot-cpp")):
     print("godot-cpp is not available. Run: git submodule update --init --recursive")
     sys.exit(1)
+
+# If user passed target=test_logger (or similar), godot-cpp only accepts editor/template_debug/template_release.
+# Override so the submodule builds with template_debug; our test targets are built from Default().
+_godot_target = ARGUMENTS.get("target")
+if _godot_target and _godot_target not in ("editor", "template_debug", "template_release"):
+    ARGUMENTS["target"] = "template_debug"
 
 env = SConscript("godot-cpp/SConstruct", {"env": env, "customs": customs})
 
@@ -105,7 +112,13 @@ if not _on_windows and env.get("sanitize", "none") != "none":
     print("WARNING: Building with Sanitizer: %s ..." % san)
 
 env.Append(CPPPATH=["src/"])
-sources = Glob("src/*.cpp")
+
+# Define GODOT_EXTENSION for the main GDExtension build
+# (test_runner builds will not define this, allowing std::cout logging)
+env.Append(CPPDEFINES=["GODOT_EXTENSION"])
+
+# Collect source files (including subdirectories)
+sources = Glob("src/*.cpp") + Glob("src/core/*.cpp") + Glob("src/core/logger/*.cpp")
 
 if env["target"] in ["editor", "template_debug"]:
     try:
@@ -126,3 +139,79 @@ copy = env.Install("{}/bin/{}".format(projectdir, env["platform"]), library)
 
 Default(library)
 Default(copy)
+
+# Test logger build target (headless, no GODOT_EXTENSION)
+test_env = env.Clone()
+# Remove GODOT_EXTENSION define for test builds
+test_env["CPPDEFINES"] = [d for d in test_env.get("CPPDEFINES", []) if d != "GODOT_EXTENSION"]
+# Remove Godot-specific libraries and paths for test builds
+test_env["LIBS"] = [lib for lib in test_env.get("LIBS", []) if not str(lib).startswith("godot")]
+test_env["CPPPATH"] = [p for p in test_env.get("CPPPATH", []) if "godot-cpp" not in str(p)]
+
+test_logger = test_env.Program(
+    "bin/test_logger",
+    source=["tests/test_logger.cpp", "src/core/logger/logger.cpp"],
+)
+
+Default(test_logger)
+
+# Test runner: build and run all tests if run_tests=yes
+run_tests_flag = ARGUMENTS.get("run_tests", "no").lower() in ("1", "yes", "true")
+
+if run_tests_flag:
+    import subprocess
+    
+    def run_tests(target, source, env):
+        """Build tests and run them."""
+        # Test binaries - check both with and without .exe extension for Windows
+        test_binaries = []
+        base_name = "bin/test_logger"
+        if sys.platform == "win32":
+            test_binaries = [base_name + ".exe", base_name]
+        else:
+            test_binaries = [base_name]
+        
+        failed_tests = []
+        
+        for test_bin in test_binaries:
+            if not os.path.exists(test_bin):
+                continue  # Try next variant
+            
+            print("\n" + "="*60)
+            print("Running: {}".format(test_bin))
+            print("="*60)
+            
+            try:
+                # Use absolute path for cross-platform compatibility
+                test_path = os.path.abspath(test_bin)
+                result = subprocess.run([test_path], cwd=os.path.dirname(test_path) or ".", 
+                                       capture_output=False, text=True)
+                if result.returncode != 0:
+                    print("FAILED: {} exited with code {}".format(test_bin, result.returncode))
+                    failed_tests.append(test_bin)
+                else:
+                    print("PASSED: {}".format(test_bin))
+                break  # Found and ran the test, exit loop
+            except Exception as e:
+                print("ERROR: Failed to run {}: {}".format(test_bin, e))
+                failed_tests.append(test_bin)
+        
+        # If we didn't find any test binary, report error
+        if not any(os.path.exists(tb) for tb in test_binaries):
+            print("ERROR: Test binary not found. Expected one of: {}".format(test_binaries))
+            failed_tests.append("test_logger")
+        
+        if failed_tests:
+            print("\n" + "="*60)
+            print("TEST SUMMARY: {} test(s) failed".format(len(failed_tests)))
+            print("="*60)
+            sys.exit(1)
+        else:
+            print("\n" + "="*60)
+            print("TEST SUMMARY: All tests passed!")
+            print("="*60)
+    
+    # Create an alias that runs tests
+    test_runner = localEnv.Alias("test", [test_logger], run_tests)
+    AlwaysBuild(test_runner)
+    Default(test_runner)

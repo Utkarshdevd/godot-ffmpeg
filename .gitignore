@@ -39,6 +39,7 @@
 /dist/
 /release/
 /artifacts/
+bin/
 
 # Extension binaries
 addons/godot_av/bin/
