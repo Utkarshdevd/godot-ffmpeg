@@ -53,6 +53,12 @@ if not (os.path.isdir("godot-cpp") and os.listdir("godot-cpp")):
     print("godot-cpp is not available. Run: git submodule update --init --recursive")
     sys.exit(1)
 
+# If user passed target=test_logger (or similar), godot-cpp only accepts editor/template_debug/template_release.
+# Override so the submodule builds with template_debug; our test targets are built from Default().
+_godot_target = ARGUMENTS.get("target")
+if _godot_target and _godot_target not in ("editor", "template_debug", "template_release"):
+    ARGUMENTS["target"] = "template_debug"
+
 env = SConscript("godot-cpp/SConstruct", {"env": env, "customs": customs})
 
 # On macOS, Intel Homebrew (/usr/local) is x86_64 only — reject it when building for arm64 or universal
