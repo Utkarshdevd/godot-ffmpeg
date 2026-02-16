@@ -26,6 +26,11 @@ ffmpeg_include = os.path.join(brew_prefix, "include")
 ffmpeg_lib = os.path.join(brew_prefix, "lib")
 print("Using FFmpeg at: {}".format(brew_prefix))
 
+# On macOS, /opt/homebrew FFmpeg is arm64 only — default to arm64 when using it so CI and
+# local "scons run_tests=yes" (without explicit arch) match the FFmpeg architecture.
+if sys.platform == "darwin" and brew_prefix.startswith("/opt/homebrew") and not ARGUMENTS.get("arch"):
+    ARGUMENTS["arch"] = "arm64"
+
 localEnv = Environment(tools=["default"], PLATFORM="")
 
 customs = ["custom.py"]
@@ -68,6 +73,14 @@ if sys.platform == "darwin" and brew_prefix.startswith("/usr/local") and env["ar
     print("")
     print("ERROR: FFmpeg at {} is x86_64 only. This build targets {}.".format(brew_prefix, env["arch"]))
     print("Use arch=x86_64 for Intel Mac, or install arm64 FFmpeg and set FFMPEG_PREFIX=/opt/homebrew/opt/ffmpeg")
+    print("")
+    sys.exit(1)
+
+# On macOS, /opt/homebrew FFmpeg is arm64 only — reject building for x86_64 when using it
+if sys.platform == "darwin" and brew_prefix.startswith("/opt/homebrew") and env["arch"] == "x86_64":
+    print("")
+    print("ERROR: FFmpeg at {} is arm64 only. This build targets x86_64.".format(brew_prefix))
+    print("Use arch=arm64 for Apple Silicon, or use Intel FFmpeg (e.g. /usr/local) with arch=x86_64")
     print("")
     sys.exit(1)
 

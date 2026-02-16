@@ -150,7 +150,12 @@ jobs:
         if: matrix.ffmpeg_install != 'brew'
 
       - name: Build and run tests
+        run: scons -j4 run_tests=yes arch=arm64
+        if: matrix.ffmpeg_install == 'brew'
+
+      - name: Build and run tests
         run: scons -j4 run_tests=yes
+        if: matrix.ffmpeg_install != 'brew'
         continue-on-error: false
 
       - name: ccache stats (after build)
