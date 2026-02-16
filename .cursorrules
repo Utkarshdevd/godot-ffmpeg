@@ -15,7 +15,7 @@ You are an expert C++20 developer specializing in Godot GDExtensions and FFmpeg.
    * Use `av_packet_unref` and `av_frame_free` strictly.
    * No dynamic allocations in the hot decode loop.
 4. **Logging and Debugging**
-   * ALWAYS use the unified logger macros from `src/core/logger.hpp`.
+   * ALWAYS use the unified logger macros from `src/core/logger/logger.hpp`.
    * Use `LOG_INFO("msg")` for general events.
    * Use `LOG_WARN("msg")` for non-fatal issues.
    * Use `LOG_ERR("msg")` for critical failures.

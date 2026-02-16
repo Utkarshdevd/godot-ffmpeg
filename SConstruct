@@ -105,7 +105,13 @@ if not _on_windows and env.get("sanitize", "none") != "none":
     print("WARNING: Building with Sanitizer: %s ..." % san)
 
 env.Append(CPPPATH=["src/"])
-sources = Glob("src/*.cpp")
+
+# Define GODOT_EXTENSION for the main GDExtension build
+# (test_runner builds will not define this, allowing std::cout logging)
+env.Append(CPPDEFINES=["GODOT_EXTENSION"])
+
+# Collect source files (including subdirectories)
+sources = Glob("src/*.cpp") + Glob("src/core/*.cpp") + Glob("src/core/logger/*.cpp")
 
 if env["target"] in ["editor", "template_debug"]:
     try:

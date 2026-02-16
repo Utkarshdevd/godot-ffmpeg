@@ -52,7 +52,7 @@ Decoding must strictly occur on a background thread to prevent blocking the engi
 
 ### 4. Logging Discipline
 
-All logging must use the centralized logger at `src/core/log.hpp`.
+All logging must use the centralized logger at `src/core/logger/logger.hpp`.
 
 * **Forbidden:** `std::cout`, `printf`, `UtilityFunctions::print`
 * **Required Macros:** `LOG_DEBUG`, `LOG_INFO`, `LOG_WARN`, `LOG_ERROR`
