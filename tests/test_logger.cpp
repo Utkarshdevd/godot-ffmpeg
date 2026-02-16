@@ -1,4 +1,4 @@
-#include "core/logger/logger.hpp"
+#include "../src/core/logger/logger.hpp"
 #include <cstdlib>
 
 int main() {

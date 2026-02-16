@@ -118,7 +118,7 @@ env.Append(CPPPATH=["src/"])
 env.Append(CPPDEFINES=["GODOT_EXTENSION"])
 
 # Collect source files (including subdirectories)
-sources = Glob("src/*.cpp") + Glob("src/core/*.cpp") + Glob("src/core/logger/*.cpp")
+sources = Glob("src/*.cpp") + Glob("src/core/*.cpp") + Glob("src/core/logger/*.cpp") + Glob("src/core/demuxer/*.cpp")
 
 if env["target"] in ["editor", "template_debug"]:
     try:
@@ -159,7 +159,7 @@ Default(test_logger)
 # Test demuxer (links against FFmpeg libs)
 test_demuxer = test_env.Program(
     "bin/test_demuxer",
-    source=["tests/test_demuxer.cpp"],
+    source=["tests/test_demuxer.cpp", "src/core/demuxer/demuxer.cpp", "src/core/logger/logger.cpp"],
     LIBS=["avformat", "avcodec", "avutil"],
 )
 
