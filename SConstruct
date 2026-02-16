@@ -145,7 +145,7 @@ test_env = env.Clone()
 # Remove GODOT_EXTENSION define for test builds
 test_env["CPPDEFINES"] = [d for d in test_env.get("CPPDEFINES", []) if d != "GODOT_EXTENSION"]
 # Remove Godot-specific libraries and paths for test builds
-test_env["LIBS"] = [lib for lib in test_env.get("LIBS", []) if not lib.startswith("godot")]
+test_env["LIBS"] = [lib for lib in test_env.get("LIBS", []) if not str(lib).startswith("godot")]
 test_env["CPPPATH"] = [p for p in test_env.get("CPPPATH", []) if "godot-cpp" not in str(p)]
 
 test_logger = test_env.Program(
