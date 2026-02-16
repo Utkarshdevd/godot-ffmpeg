@@ -133,6 +133,7 @@ lib_filename = "{}{}{}{}".format(env.subst("$SHLIBPREFIX"), libname, suffix, env
 library = env.SharedLibrary(
     "bin/{}/{}".format(env["platform"], lib_filename),
     source=sources,
+    LIBS=["avformat", "avcodec", "avutil", "swscale", "swresample"],
 )
 
 copy = env.Install("{}/bin/{}".format(projectdir, env["platform"]), library)
