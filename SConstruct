@@ -133,6 +133,7 @@ lib_filename = "{}{}{}{}".format(env.subst("$SHLIBPREFIX"), libname, suffix, env
 library = env.SharedLibrary(
     "bin/{}/{}".format(env["platform"], lib_filename),
     source=sources,
+    LIBS=["avformat", "avcodec", "avutil", "swscale", "swresample"],
 )
 
 copy = env.Install("{}/bin/{}".format(projectdir, env["platform"]), library)
@@ -154,6 +155,15 @@ test_logger = test_env.Program(
 )
 
 Default(test_logger)
+
+# Test demuxer (links against FFmpeg libs)
+test_demuxer = test_env.Program(
+    "bin/test_demuxer",
+    source=["tests/test_demuxer.cpp"],
+    LIBS=["avformat", "avcodec", "avutil"],
+)
+
+Default(test_demuxer)
 
 # Test runner: build and run all tests if run_tests=yes
 run_tests_flag = ARGUMENTS.get("run_tests", "no").lower() in ("1", "yes", "true")
