@@ -3,6 +3,8 @@ import os
 import shutil
 import sys
 
+from SCons.Script import Environment, ARGUMENTS, Variables, BoolVariable, EnumVariable, Help, Default, AlwaysBuild
+
 libname = "godot_av"
 projectdir = "addons/godot_av"
 
@@ -130,10 +132,11 @@ if env["target"] in ["editor", "template_debug"]:
 suffix = env["suffix"].replace(".dev", "").replace(".universal", "")
 lib_filename = "{}{}{}{}".format(env.subst("$SHLIBPREFIX"), libname, suffix, env.subst("$SHLIBSUFFIX"))
 
+# Do not pass LIBS= here: use env's LIBS (godot-cpp + FFmpeg from env.Append above)
+# so the extension links against both Godot and FFmpeg.
 library = env.SharedLibrary(
     "bin/{}/{}".format(env["platform"], lib_filename),
     source=sources,
-    LIBS=["avformat", "avcodec", "avutil", "swscale", "swresample"],
 )
 
 copy = env.Install("{}/bin/{}".format(projectdir, env["platform"]), library)
@@ -149,9 +152,16 @@ test_env["CPPDEFINES"] = [d for d in test_env.get("CPPDEFINES", []) if d != "GOD
 test_env["LIBS"] = [lib for lib in test_env.get("LIBS", []) if not str(lib).startswith("godot")]
 test_env["CPPPATH"] = [p for p in test_env.get("CPPPATH", []) if "godot-cpp" not in str(p)]
 
+# Build test object files in separate variant dirs so (1) they don't clash with the main
+# library's objects (GODOT_EXTENSION), and (2) test_logger and test_demuxer don't both
+# request the same object file (e.g. logger.o), which causes "Two different environments"
+# warnings/errors.
+test_env.VariantDir("build/test_logger_src", "src", duplicate=0)
+test_env.VariantDir("build/test_demuxer_src", "src", duplicate=0)
+
 test_logger = test_env.Program(
     "bin/test_logger",
-    source=["tests/test_logger.cpp", "src/core/logger/logger.cpp"],
+    source=["tests/test_logger.cpp", "build/test_logger_src/core/logger/logger.cpp"],
 )
 
 Default(test_logger)
@@ -159,7 +169,11 @@ Default(test_logger)
 # Test demuxer (links against FFmpeg libs)
 test_demuxer = test_env.Program(
     "bin/test_demuxer",
-    source=["tests/test_demuxer.cpp", "src/core/demuxer/demuxer.cpp", "src/core/logger/logger.cpp"],
+    source=[
+        "tests/test_demuxer.cpp",
+        "build/test_demuxer_src/core/demuxer/demuxer.cpp",
+        "build/test_demuxer_src/core/logger/logger.cpp",
+    ],
     LIBS=["avformat", "avcodec", "avutil"],
 )
 
