@@ -1,10 +1,15 @@
-# godot-ffmpeg
+# 🎥 Godot FFmpeg Player
 
-A minimal **Godot 4.x GDExtension** in C++20 that links against FFmpeg and prints the FFmpeg version when the extension loads. It serves as a load-test to verify headers, linking, and Godot integration—no decoding logic.
+[![Build](https://github.com/Utkarshdevd/godot-ffmpeg/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/Utkarshdevd/godot-ffmpeg/actions/workflows/build.yml)
+![C++](https://img.shields.io/badge/C++-20-blue.svg?style=flat&logo=c%2B%2B)
+![Godot](https://img.shields.io/badge/Godot-4.2-478cbf?style=flat&logo=godot-engine&logoColor=white)
+![License](https://img.shields.io/github/license/Utkarshdevd/godot-ffmpeg)
+
+A high-performance video player extension for Godot 4, built with C++ and FFmpeg.
 
 - **godot-cpp** bindings, **SCons** build
-- **macOS** (Apple Silicon and Intel) supported; FFmpeg from Homebrew
-- Registers a Node-derived **AVTestNode**; in `_ready()` it calls `av_version_info()` and logs via the unified **logger** (`src/core/logger/`), which routes to Godot in-editor or `std::cout` when headless.
+- **macOS** (Apple Silicon and Intel), **Linux**, **Windows**; FFmpeg from Homebrew / system / CI
+- Core **demuxer** and unified **logger**; headless tests for `src/core` without the Godot Editor
 
 ---
 
