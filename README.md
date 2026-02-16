@@ -4,7 +4,7 @@ A minimal **Godot 4.x GDExtension** in C++20 that links against FFmpeg and print
 
 - **godot-cpp** bindings, **SCons** build
 - **macOS** (Apple Silicon and Intel) supported; FFmpeg from Homebrew
-- Registers a Node-derived **AVTestNode**; in `_ready()` it calls `av_version_info()` and logs via Godot’s `UtilityFunctions::print()`
+- Registers a Node-derived **AVTestNode**; in `_ready()` it calls `av_version_info()` and logs via the unified **logger** (`src/core/logger/`), which routes to Godot in-editor or `std::cout` when headless.
 
 ---
 
@@ -65,29 +65,36 @@ You only need the **debug** library for editor/Play; use the **release** library
 
 ## Testing & Quality Assurance
 
-- **Core Layer Isolation:** Strict unit tests run on the `src/core` logic independently of the Godot Editor using a headless **test_runner**. The core layer is built and tested without loading the engine.
-- **Sanitizers (Local Workflow):** For local debugging, use SCons sanitizer flags to catch memory and concurrency bugs:
+- **Core Layer Isolation:** Unit tests run on `src/core` logic (e.g. the logger) **without** the Godot Editor. Tests are built without defining `GODOT_EXTENSION`, so the logger uses Terminal Mode (`std::cout`).
+- **Running Tests:** Build and run all tests in one step:
+
+  ```bash
+  scons run_tests=yes
+  ```
+
+  Or build the test binary only, then run it manually:
+
+  ```bash
+  scons bin/test_logger
+  ./bin/test_logger          # macOS/Linux
+  .\bin\test_logger.exe     # Windows
+  ```
+
+- **Sanitizers (Local Workflow):** For local debugging, use SCons sanitizer flags:
   - `scons target=template_debug` — standard debug build
-  - `scons target=template_debug sanitize=address` — detects memory leaks and buffer overflows (AddressSanitizer)
-  - `scons target=template_debug sanitize=thread` — detects race conditions and deadlocks (ThreadSanitizer)
-  - **Note:** Run sanitizer builds via the **test_runner** only. Do **not** run sanitizer-built libraries inside the Godot Editor (runtime issues and false positives).
-- **CI/CD Strategy:** On every push to `main` or Pull Request, CI runs the full build matrix (e.g. ASan, TSan, Linux, Windows, macOS) to validate compilation and tests across platforms and sanitizer configurations.
+  - `scons target=template_debug sanitize=address` — AddressSanitizer (memory leaks, buffer overflows)
+  - `scons target=template_debug sanitize=thread` — ThreadSanitizer (race conditions)
+  - **Note:** Run sanitizer-built tests via the headless test binaries only; do **not** load sanitizer-built libraries in the Godot Editor.
+- **CI:** On every push or PR to `main`, the workflow builds the extension (macOS, Linux, Windows) and then runs all tests (`scons run_tests=yes`). The pipeline fails if any test fails.
 
 ---
 
-## Running Tests
+## Test assets (optional)
 
-- **Generate Assets:** Test video assets are not committed to git. Generate them once (requires FFmpeg on PATH):
+- **Generate Assets:** Test video assets are not committed. Generate them once (requires FFmpeg on PATH):
 
   ```bash
   python3 tests/generate_assets.py
-  ```
-
-- **Build & Run:** Build the headless test runner and run it:
-
-  ```bash
-  scons target=test
-  ./bin/test_runner
   ```
 
 ---
@@ -110,7 +117,7 @@ You only need the **debug** library for editor/Play; use the **release** library
 
 ```text
 godot-ffmpeg/
-├── .github/              # (optional) CI
+├── .github/workflows/     # CI (build + tests on push/PR to main)
 ├── addons/godot_av/      # GDExtension addon
 │   ├── godot_av.gdextension
 │   └── bin/              # Built libs (gitignored)
@@ -118,7 +125,15 @@ godot-ffmpeg/
 ├── src/
 │   ├── register_types.{h,cpp}
 │   ├── av_test_node.{h,cpp}
+│   ├── core/
+│   │   └── logger/       # Unified logging (Godot + headless)
+│   │       ├── logger.hpp
+│   │       └── logger.cpp
 │   └── gen/              # Generated (gitignored)
+├── tests/
+│   ├── test_logger.cpp   # Logger test harness
+│   └── generate_assets.py
+├── bin/                  # Test binaries (e.g. test_logger) (gitignored)
 ├── SConstruct
 ├── custom.py
 └── README.md

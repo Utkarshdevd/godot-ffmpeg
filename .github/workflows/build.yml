@@ -149,6 +149,10 @@ jobs:
         run: scons -j4 target=template_release
         if: matrix.ffmpeg_install != 'brew'
 
+      - name: Build and run tests
+        run: scons -j4 run_tests=yes
+        continue-on-error: false
+
       - name: ccache stats (after build)
         if: matrix.use_ccache
         run: ccache -s
