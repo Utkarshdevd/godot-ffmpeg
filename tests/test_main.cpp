@@ -1,6 +1,7 @@
-#include <iostream>
+#include "../src/core/logger/logger.hpp"
+#include <cstdlib>
 
 int main() {
-    std::cout << "Test Runner Initialized" << std::endl;
-    return 0;
+    LOG_INFO("Test Runner Initialized");
+    return EXIT_SUCCESS;
 }
