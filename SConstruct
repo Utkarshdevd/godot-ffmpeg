@@ -3,6 +3,8 @@ import os
 import shutil
 import sys
 
+from SCons.Script import Environment, ARGUMENTS, Variables, BoolVariable, EnumVariable, Help, Default, AlwaysBuild
+
 libname = "godot_av"
 projectdir = "addons/godot_av"
 
@@ -23,6 +25,11 @@ else:
 ffmpeg_include = os.path.join(brew_prefix, "include")
 ffmpeg_lib = os.path.join(brew_prefix, "lib")
 print("Using FFmpeg at: {}".format(brew_prefix))
+
+# On macOS, /opt/homebrew FFmpeg is arm64 only — default to arm64 when using it so CI and
+# local "scons run_tests=yes" (without explicit arch) match the FFmpeg architecture.
+if sys.platform == "darwin" and brew_prefix.startswith("/opt/homebrew") and not ARGUMENTS.get("arch"):
+    ARGUMENTS["arch"] = "arm64"
 
 localEnv = Environment(tools=["default"], PLATFORM="")
 
@@ -66,6 +73,14 @@ if sys.platform == "darwin" and brew_prefix.startswith("/usr/local") and env["ar
     print("")
     print("ERROR: FFmpeg at {} is x86_64 only. This build targets {}.".format(brew_prefix, env["arch"]))
     print("Use arch=x86_64 for Intel Mac, or install arm64 FFmpeg and set FFMPEG_PREFIX=/opt/homebrew/opt/ffmpeg")
+    print("")
+    sys.exit(1)
+
+# On macOS, /opt/homebrew FFmpeg is arm64 only — reject building for x86_64 when using it
+if sys.platform == "darwin" and brew_prefix.startswith("/opt/homebrew") and env["arch"] == "x86_64":
+    print("")
+    print("ERROR: FFmpeg at {} is arm64 only. This build targets x86_64.".format(brew_prefix))
+    print("Use arch=arm64 for Apple Silicon, or use Intel FFmpeg (e.g. /usr/local) with arch=x86_64")
     print("")
     sys.exit(1)
 
@@ -130,10 +145,11 @@ if env["target"] in ["editor", "template_debug"]:
 suffix = env["suffix"].replace(".dev", "").replace(".universal", "")
 lib_filename = "{}{}{}{}".format(env.subst("$SHLIBPREFIX"), libname, suffix, env.subst("$SHLIBSUFFIX"))
 
+# Do not pass LIBS= here: use env's LIBS (godot-cpp + FFmpeg from env.Append above)
+# so the extension links against both Godot and FFmpeg.
 library = env.SharedLibrary(
     "bin/{}/{}".format(env["platform"], lib_filename),
     source=sources,
-    LIBS=["avformat", "avcodec", "avutil", "swscale", "swresample"],
 )
 
 copy = env.Install("{}/bin/{}".format(projectdir, env["platform"]), library)
@@ -149,9 +165,16 @@ test_env["CPPDEFINES"] = [d for d in test_env.get("CPPDEFINES", []) if d != "GOD
 test_env["LIBS"] = [lib for lib in test_env.get("LIBS", []) if not str(lib).startswith("godot")]
 test_env["CPPPATH"] = [p for p in test_env.get("CPPPATH", []) if "godot-cpp" not in str(p)]
 
+# Build test object files in separate variant dirs so (1) they don't clash with the main
+# library's objects (GODOT_EXTENSION), and (2) test_logger and test_demuxer don't both
+# request the same object file (e.g. logger.o), which causes "Two different environments"
+# warnings/errors.
+test_env.VariantDir("build/test_logger_src", "src", duplicate=0)
+test_env.VariantDir("build/test_demuxer_src", "src", duplicate=0)
+
 test_logger = test_env.Program(
     "bin/test_logger",
-    source=["tests/test_logger.cpp", "src/core/logger/logger.cpp"],
+    source=["tests/test_logger.cpp", "build/test_logger_src/core/logger/logger.cpp"],
 )
 
 Default(test_logger)
@@ -159,7 +182,11 @@ Default(test_logger)
 # Test demuxer (links against FFmpeg libs)
 test_demuxer = test_env.Program(
     "bin/test_demuxer",
-    source=["tests/test_demuxer.cpp", "src/core/demuxer/demuxer.cpp", "src/core/logger/logger.cpp"],
+    source=[
+        "tests/test_demuxer.cpp",
+        "build/test_demuxer_src/core/demuxer/demuxer.cpp",
+        "build/test_demuxer_src/core/logger/logger.cpp",
+    ],
     LIBS=["avformat", "avcodec", "avutil"],
 )
 
